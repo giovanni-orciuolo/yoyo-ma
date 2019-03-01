@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace yoyo_bot.src.bot.music
@@ -33,7 +34,7 @@ namespace yoyo_bot.src.bot.music
         {
             this.FFMpeg = Process.Start(new ProcessStartInfo
             {
-                FileName = "ffmpeg",
+                FileName = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\ffmpeg.exe",
                 Arguments = $@"-hide_banner -loglevel panic -i ""{file_path}"" -ac 2 -f s16le -ar 48000 pipe:1",
                 RedirectStandardOutput = start_mode == ProcessStartMode.OUTPUT,
                 RedirectStandardInput = start_mode == ProcessStartMode.INPUT,

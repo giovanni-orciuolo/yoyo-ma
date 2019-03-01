@@ -31,7 +31,7 @@ namespace yoyo_bot
             if (token == null)
             {
                 Console.WriteLine("Discord Token not found in environment, I'm going to use local text file to read it.");
-                FileStream fileStream = new FileStream(@"../../../../token.txt", FileMode.Open, FileAccess.Read);
+                FileStream fileStream = new FileStream(@"../../../token.txt", FileMode.Open, FileAccess.Read);
                 using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
                     return streamReader.ReadToEnd();

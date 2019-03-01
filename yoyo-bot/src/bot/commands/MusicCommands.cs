@@ -61,7 +61,7 @@ namespace yoyo_bot.src.bot.music
                 {
                     // In this case, the user is passing a specific song name that the bot owns in db
                     // Search for it and, if not found, call Youtube service to search for it on youtube, as a last resort
-                    await ctx.RespondAsync($"{DiscordEmoji.FromName(ctx.Client, ":musical_note:")} Playing audio file from memory '{song}'");
+                    await ctx.RespondAsync($"{DiscordEmoji.FromName(ctx.Client, ":musical_note:")} Playing audio file from memory: {song}");
                     await this.Music.Play(voiceNext, ctx.Guild, song);
                 }
             }
