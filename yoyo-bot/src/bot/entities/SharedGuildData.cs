@@ -16,6 +16,5 @@ namespace yoyo_bot.src.bot.entities
         /// Discord guild associated with this data
         /// </summary>
         public DiscordGuild Guild { get; }
-
     }
 }

@@ -1,11 +1,15 @@
-﻿using DSharpPlus.Entities;
+﻿using DSharpPlus;
+using DSharpPlus.CommandsNext;
+using DSharpPlus.Entities;
+using DSharpPlus.Net;
 using DSharpPlus.VoiceNext;
 using System;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
+using yoyo_bot.src.bot.entities;
 
-namespace yoyo_bot.src.bot.music
+namespace yoyo_bot.src.bot.services
 {
     /// <summary>
     /// Manages music reproduction using ffmpeg and VoiceNext.
@@ -24,7 +28,7 @@ namespace yoyo_bot.src.bot.music
         /// <param name="vnext">VoiceNext instance</param>
         /// <param name="voiceChannel">Voice channel to join</param>
         /// <returns></returns>
-        public async Task JoinVoiceChannel(VoiceNextExtension vnext, DiscordChannel voiceChannel)
+        public async Task<GuildMusicChannel> JoinVoiceChannel(VoiceNextExtension vnext, DiscordChannel voiceChannel)
         {
             var vnc = vnext.GetConnection(voiceChannel.Guild);
             if (vnc != null)
@@ -39,6 +43,7 @@ namespace yoyo_bot.src.bot.music
             channel.IsConnected = true;
 
             vnc = await vnext.ConnectAsync(voiceChannel);
+            return channel;
         }
 
         /// <summary>
@@ -55,14 +60,10 @@ namespace yoyo_bot.src.bot.music
             if (!this.MusicChannels.TryGetValue(guild.Id, out GuildMusicChannel channel))
                 throw new InvalidOperationException("No music channel associated with this guild!");
 
-            if (channel.MusicProc != null)
-            {
-                await channel.MusicProc.Kill(ProcessStartMode.OUTPUT);
-                channel.MusicProc = null;
-            }
+            if (await this.TryDequeueSong(channel) && !channel.Queue.IsEmpty)
+                channel.Queue.Clear();
 
             channel.IsConnected = false;
-            channel.IsPlaying = false;
             vnc.Dispose();
         }
 
@@ -73,7 +74,7 @@ namespace yoyo_bot.src.bot.music
         /// <param name="guild">Guild reference</param>
         /// <param name="song_path">Path to MP3 music file</param>
         /// <returns></returns>
-        public async Task Play(VoiceNextExtension vnext, DiscordGuild guild, string song_path)
+        public async Task PlayFromMemory(VoiceNextExtension vnext, DiscordGuild guild, DiscordMember requested_by, string song_path)
         {
             var vnc = vnext.GetConnection(guild);
             if (vnc == null)
@@ -82,17 +83,27 @@ namespace yoyo_bot.src.bot.music
             if (!File.Exists(song_path))
                 throw new FileNotFoundException($"Music file not found! {DiscordEmoji.FromName(vnext.Client, ":(")}");
 
-            // Get channel associated with this guild
             if (!this.MusicChannels.TryGetValue(guild.Id, out GuildMusicChannel channel))
                 throw new InvalidOperationException("No music channel associated with this guild!");
 
-            // Setup transmit stream
+            this.EnqueueSong(channel, new MusicData
+            {
+                Source = song_path,
+                Channel = channel,
+                RequestedBy = requested_by,
+                MusicType = MusicTypes.MEMORY
+            });
+
+            // Something it's being already played, limit to just enqueueing
+            if (channel.IsPlaying)
+                return;
+
             var txStream = vnc.GetTransmitStream();
             txStream.VolumeModifier = channel.Volume / 100f;
 
             // Start speaking
-            channel.MusicProc = new MusicProcess(song_path, ProcessStartMode.OUTPUT);
             channel.IsPlaying = true;
+            channel.MusicProc = new MusicProcess(song_path, ProcessStartMode.OUTPUT);
 
             var ffout = channel.MusicProc.FFMpeg.StandardOutput.BaseStream;
             await ffout.CopyToAsync(txStream);
@@ -100,9 +111,8 @@ namespace yoyo_bot.src.bot.music
 
             await vnc.WaitForPlaybackFinishAsync();
 
-            // Stop speaking
-            channel.IsPlaying = false;
-            await channel.MusicProc.Kill(ProcessStartMode.OUTPUT);
+            // Stop speaking (also sets IsPlaying to false)
+            await this.TryDequeueSong(channel);
         }
 
         /// <summary>
@@ -117,13 +127,10 @@ namespace yoyo_bot.src.bot.music
             if (vnc == null)
                 throw new InvalidOperationException($"I'm not connected to any voice channel! {DiscordEmoji.FromName(vnext.Client, ":thinking:")}");
 
-            // Get channel associated with this guild
             if (!this.MusicChannels.TryGetValue(guild.Id, out GuildMusicChannel channel))
                 throw new InvalidOperationException("No music channel associated with this guild!");
 
-            channel.IsPlaying = false;
-            await channel.MusicProc.Kill(ProcessStartMode.OUTPUT);
-            channel.MusicProc = null;
+            await this.TryDequeueSong(channel);
         }
 
         /// <summary>
@@ -154,5 +161,72 @@ namespace yoyo_bot.src.bot.music
             this.MusicChannels.TryRemove(guild.Id, out GuildMusicChannel removed);
         }
 
+        /// <summary>
+        /// Enqueues a new song in the relative channel queue
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        public void EnqueueSong(GuildMusicChannel channel, MusicData item)
+        {
+            if (channel.Queue.Count >= GuildMusicChannel.QUEUE_CAPACITY)
+                throw new IndexOutOfRangeException($"Queue reached maximum capacity of {GuildMusicChannel.QUEUE_CAPACITY}! Get a grip man...");
+
+            channel.Queue.Enqueue(item);
+        }
+
+        /// <summary>
+        /// Kills music process (if necessary) and dequeues current song from channel
+        /// </summary>
+        /// <param name="channel"></param>
+        /// <returns></returns>
+        public async Task<bool> TryDequeueSong(GuildMusicChannel channel)
+        {
+            if (channel.MusicProc != null)
+            {
+                await channel.MusicProc.Kill(ProcessStartMode.OUTPUT);
+                channel.MusicProc = null;
+            }
+            channel.IsPlaying = false;
+            return channel.Queue.TryDequeue(out MusicData result);
+        }
+
+        /// <summary>
+        /// Creates embedded message to visualize queue for a guild
+        /// </summary>
+        /// <param name="ctx"></param>
+        /// <returns></returns>
+        public DiscordEmbed CreateQueueEmbedForGuild(CommandContext ctx)
+        {
+            if (!this.MusicChannels.TryGetValue(ctx.Guild.Id, out GuildMusicChannel channel))
+                throw new InvalidOperationException("No music channel is yet associated for this guild...");
+
+            if (channel.Queue.Count == 0)
+                throw new InvalidOperationException("The queue for this guild is empty at the moment. Try to play something using 'yo play'!");
+
+            var queueArray = channel.Queue.ToArray();
+            var currentSong = queueArray[0];
+
+            var builder = new DiscordEmbedBuilder
+            {
+                Title = $"Queue for {ctx.Guild.Name}",
+                Description = 
+                    $"\n\n__Now Playing:__\n" +
+                    $"```{currentSong.GetFormattedSource()} | Requested by {currentSong.RequestedBy.Username}```\n\n" +
+                    $"{DiscordEmoji.FromName(ctx.Client, ":arrow_forward:")} UP NEXT:\n\n" +
+                    $"{(queueArray.Length == 1 ? $"**Nothing...** {DiscordEmoji.FromName(ctx.Client, ":(")}" : "")}",
+                Color = DiscordColor.SpringGreen,
+            }.WithFooter(iconUrl: ctx.Member.GetAvatarUrl(ImageFormat.Png));
+
+            if (queueArray.Length > 1)
+            {
+                for (int i = 1; i < queueArray.Length; ++i)
+                {
+                    var queueSong = queueArray[i];
+                    builder.AddField($"{i}. {queueSong.GetFormattedSource()} | Requested by {queueSong.RequestedBy.Username}", "");
+                }
+            }
+
+            return builder.Build();
+        }
     }
 }

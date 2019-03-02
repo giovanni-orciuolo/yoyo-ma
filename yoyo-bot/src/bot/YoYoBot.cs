@@ -4,7 +4,8 @@ using DSharpPlus.Entities;
 using DSharpPlus.VoiceNext;
 using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Tasks;
-using yoyo_bot.src.bot.music;
+using yoyo_bot.src.bot.commands;
+using yoyo_bot.src.bot.services;
 
 namespace yoyo_bot.src.bot
 {
@@ -36,6 +37,7 @@ namespace yoyo_bot.src.bot
 
             CommandsNext.RegisterCommands<ModCommands>();
             CommandsNext.RegisterCommands<MusicCommands>();
+            CommandsNext.RegisterCommands<MemeCommands>();
 
             VoiceNext = this.UseVoiceNext();
 

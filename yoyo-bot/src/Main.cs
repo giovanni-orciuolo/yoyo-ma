@@ -31,13 +31,19 @@ namespace yoyo_bot
             if (token == null)
             {
                 Console.WriteLine("Discord Token not found in environment, I'm going to use local text file to read it.");
+                string tokenPath = @"../../../token.txt";
+                if (!File.Exists(tokenPath))
+                {
+                    Console.WriteLine("No token.txt file found, please create one or store the token in env.DISCORD_TOKEN.");
+                    return "NOT_FOUND";
+                }
                 FileStream fileStream = new FileStream(@"../../../token.txt", FileMode.Open, FileAccess.Read);
                 using (StreamReader streamReader = new StreamReader(fileStream, Encoding.UTF8))
                 {
                     return streamReader.ReadToEnd();
                 }
             }
-            else return token;
+            return token;
         }
     }
 }

@@ -7,18 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="src\bot\music\ffmpeg\**" />
-    <EmbeddedResource Remove="src\bot\music\ffmpeg\**" />
-    <None Remove="src\bot\music\ffmpeg\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="DSharpPlus" Version="4.0.0-nightly-00573" />
     <PackageReference Include="DSharpPlus.CommandsNext" Version="4.0.0-nightly-00573" />
     <PackageReference Include="DSharpPlus.Interactivity" Version="4.0.0-nightly-00573" />
     <PackageReference Include="DSharpPlus.Lavalink" Version="4.0.0-nightly-00573" />
     <PackageReference Include="DSharpPlus.Rest" Version="4.0.0-nightly-00573" />
     <PackageReference Include="DSharpPlus.VoiceNext" Version="4.0.0-nightly-00573" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="src\resources\" />
   </ItemGroup>
 
 </Project>

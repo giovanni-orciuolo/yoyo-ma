@@ -3,7 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
 
-namespace yoyo_bot.src.bot.music
+namespace yoyo_bot.src.bot.entities
 {
     /// <summary>
     /// Used to know if I need to open the stdin or stdout process stream

@@ -5,8 +5,10 @@ using DSharpPlus.Entities;
 using DSharpPlus.VoiceNext;
 using System;
 using System.Threading.Tasks;
+using yoyo_bot.src.bot.entities;
+using yoyo_bot.src.bot.services;
 
-namespace yoyo_bot.src.bot.music
+namespace yoyo_bot.src.bot.commands
 {
     /// <summary>
     /// Declares commands to interact with music
@@ -20,6 +22,31 @@ namespace yoyo_bot.src.bot.music
             this.Music = music;
         }
 
+        [Command("join"), Aliases("come")]
+        [Description("Joins your voice channel to do nothing at all")]
+        [RequireUserPermissions(Permissions.ManageChannels)]
+        public async Task Join(CommandContext ctx)
+        {
+            try
+            {
+                var voiceNext = ctx.Client.GetVoiceNext();
+                var userVoiceChannel = ctx.Member.VoiceState?.Channel;
+                var botVoiceChannel = ctx.Guild.CurrentMember.VoiceState?.Channel;
+
+                if (userVoiceChannel == null)
+                {
+                    await ctx.RespondAsync($"{ctx.User.Username}, you are not connected to any voice channel... {DiscordEmoji.FromName(ctx.Client, ":thinking:")}");
+                    return;
+                }
+
+                await this.Music.JoinVoiceChannel(voiceNext, userVoiceChannel);
+            }
+            catch (Exception e)
+            {
+                await CommandError.Handle(ctx, e);
+            }
+        }
+
         [Command("play"), Aliases("sing")]
         [Description("Joins your voice channel and plays music")]
         [RequireUserPermissions(Permissions.ManageChannels)]
@@ -27,12 +54,11 @@ namespace yoyo_bot.src.bot.music
         {
             try
             {
+                // First of all try to join his voice channel
                 var voiceNext = ctx.Client.GetVoiceNext();
-
                 var userVoiceChannel = ctx.Member.VoiceState?.Channel;
                 var botVoiceChannel = ctx.Guild.CurrentMember.VoiceState?.Channel;
 
-                // First of all join the voice channel
                 if (userVoiceChannel == null)
                 {
                     await ctx.RespondAsync($"{ctx.User.Username}, you are not connected to any voice channel... {DiscordEmoji.FromName(ctx.Client, ":thinking:")}");
@@ -41,9 +67,11 @@ namespace yoyo_bot.src.bot.music
                 if (botVoiceChannel != null && userVoiceChannel != botVoiceChannel)
                 {
                     await ctx.RespondAsync($"{ctx.User.Username}, you need to be in the same channel with me!");
+                    return;
                 }
 
-                await this.Music.JoinVoiceChannel(voiceNext, userVoiceChannel);
+                var channel = await this.Music.JoinVoiceChannel(voiceNext, userVoiceChannel);
+                await ctx.RespondAsync($"{DiscordEmoji.FromName(ctx.Client, $"{(channel.IsPlaying ? ":musical_note:" : ":arrow_forward:")}")} {(channel.IsPlaying ? "Enqueued a new song" : "Now playing")}: {song}");
 
                 // "song" can be 3 things
                 // 1. It can be nothing.
@@ -61,8 +89,12 @@ namespace yoyo_bot.src.bot.music
                 {
                     // In this case, the user is passing a specific song name that the bot owns in db
                     // Search for it and, if not found, call Youtube service to search for it on youtube, as a last resort
-                    await ctx.RespondAsync($"{DiscordEmoji.FromName(ctx.Client, ":musical_note:")} Playing audio file from memory: {song}");
-                    await this.Music.Play(voiceNext, ctx.Guild, song);
+                    await this.Music.PlayFromMemory(voiceNext, ctx.Guild, ctx.Member, song);
+                    if (channel.Queue.Count > 0)
+                    {
+                        channel.Queue.TryPeek(out MusicData next);
+                        await this.Play(ctx, next.Source);
+                    }
                 }
             }
             catch (Exception e)
@@ -120,11 +152,18 @@ namespace yoyo_bot.src.bot.music
             }
         }
 
-        [Command("play-test")]
-        [RequireUserPermissions(Permissions.ManageChannels)]
-        public async Task PlayTest(CommandContext ctx)
+        [Command("queue")]
+        [Description("Get current queue")]
+        public async Task GetQueue(CommandContext ctx)
         {
-            await this.Play(ctx, @"C:\Nanatsu no taizai Opening.mp3");
+            try
+            {
+                await ctx.RespondAsync(embed: this.Music.CreateQueueEmbedForGuild(ctx));
+            }
+            catch (Exception e)
+            {
+                await CommandError.Handle(ctx, e);
+            }
         }
     }
 }

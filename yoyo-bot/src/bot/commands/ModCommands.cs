@@ -4,7 +4,7 @@ using DSharpPlus.Entities;
 using DSharpPlus;
 using System.Threading.Tasks;
 
-namespace yoyo_bot.src.bot
+namespace yoyo_bot.src.bot.commands
 {
     /// <summary>
     /// Declares commands to help with server moderation

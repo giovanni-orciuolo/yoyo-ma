@@ -1,13 +1,15 @@
 ﻿using DSharpPlus.Entities;
-using yoyo_bot.src.bot.entities;
+using System.Collections.Concurrent;
 
-namespace yoyo_bot.src.bot.music
+namespace yoyo_bot.src.bot.entities
 {
     /// <summary>
     /// Represents a guild specific music channel
     /// </summary>
     class GuildMusicChannel : SharedGuildData
     {
+        public static int QUEUE_CAPACITY = 500;
+
         public GuildMusicChannel(DiscordGuild guild)
             : base(guild)
         {
@@ -34,5 +36,9 @@ namespace yoyo_bot.src.bot.music
         /// </summary>
         public MusicProcess MusicProc { get; set; } = null;
 
+        /// <summary>
+        /// Music queue
+        /// </summary>
+        public ConcurrentQueue<MusicData> Queue { get; set; } = new ConcurrentQueue<MusicData>();
     }
 }
