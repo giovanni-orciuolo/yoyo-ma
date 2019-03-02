@@ -31,8 +31,6 @@ namespace yoyo_bot.src.bot.services
         public async Task<GuildMusicChannel> JoinVoiceChannel(VoiceNextExtension vnext, DiscordChannel voiceChannel)
         {
             var vnc = vnext.GetConnection(voiceChannel.Guild);
-            if (vnc != null)
-                return;
 
             var channel = new GuildMusicChannel(voiceChannel.Guild);
             if (!this.MusicChannels.TryAdd(voiceChannel.GuildId, channel))
@@ -41,6 +39,9 @@ namespace yoyo_bot.src.bot.services
                 this.MusicChannels.TryGetValue(voiceChannel.GuildId, out channel);
             }
             channel.IsConnected = true;
+
+            if (vnc != null)
+                return channel;
 
             vnc = await vnext.ConnectAsync(voiceChannel);
             return channel;
