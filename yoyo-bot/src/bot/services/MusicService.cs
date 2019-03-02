@@ -32,7 +32,7 @@ namespace yoyo_bot.src.bot.services
         {
             var vnc = vnext.GetConnection(voiceChannel.Guild);
             if (vnc != null)
-                throw new InvalidOperationException($"I'm already connected in channel '{vnc.Channel?.Name}' on this guild! :triumph:");
+                return;
 
             var channel = new GuildMusicChannel(voiceChannel.Guild);
             if (!this.MusicChannels.TryAdd(voiceChannel.GuildId, channel))
