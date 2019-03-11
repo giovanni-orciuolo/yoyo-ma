@@ -19,9 +19,12 @@ You also need to download ffmpeg. You can find it under the "Natives" page in DS
 ### Running with Docker
 
 The Dockerfile provided should do all the dirty work for you. You just need to build the image and run it!
+Just follow these commands, for a completely clean installation of the bot on Docker: 
+
 ```sh
-$ docker build -t yoyo-ma yoyo-bot/
-$ docker run -d --name yoyo yoyo-ma
+$ git clone git@github.com:DoubleHub/YoYo-Ma.git
+$ docker build --build-arg token=YOUR_TOKEN_HERE -t yoyo-discord-image YoYo-Ma/yoyo-bot/
+$ docker run -d --name yoyo-discord-app yoyo-discord-image
 ```
 
 Made by Giovanni Orciuolo under the MIT license
