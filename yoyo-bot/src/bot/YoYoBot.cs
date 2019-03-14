@@ -78,7 +78,8 @@ namespace yoyo_bot.src.bot
                 if (!message.StartsWith(COMMAND_PREFIXES[0]))
                     return;
 
-                string[] commands = message.Split(" ");
+                string message_strip = message.Substring(3);
+                string[] commands = message_strip.Split(" ");
                 if (commands.Length < 2)
                     return;
 
