@@ -71,7 +71,7 @@ namespace yoyo_bot.src.bot
             MessageCreated += async e =>
             {
                 // Need to add a proper check, atm any bot is valid
-                if (!e.Author.IsBot)
+                if (e.Author.IsBot)
                     return;
 
                 string message = e.Message.Content;
@@ -88,7 +88,7 @@ namespace yoyo_bot.src.bot
 
                 if (command.Contains("mute-wh") || command.Contains("unmute-wh"))
                 {
-                    await (await FindMemberByName(e.Guild, user)).SetMuteAsync(command.Contains("mute-wh"));
+                    await (await FindMemberByName(e.Guild, user)).SetMuteAsync(command == "mute-wh");
                 }
             };
         }
