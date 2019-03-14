@@ -71,7 +71,7 @@ namespace yoyo_bot.src.bot
             MessageCreated += async e =>
             {
                 // Need to add a proper check, atm any bot is valid
-                if (e.Author.IsBot)
+                if (!e.Author.IsBot)
                     return;
 
                 string message = e.Message.Content;
